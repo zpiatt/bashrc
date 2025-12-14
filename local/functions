@@ -28,7 +28,7 @@ cidr() {
     local cidr input
     input="${1#/}"
 
-    local -A cidr_dict=(
+    local -A cidrs=(
         [32]="255.255.255.255"  [31]="255.255.255.254"  [30]="255.255.255.252"
         [29]="255.255.255.248"  [28]="255.255.255.240"  [27]="255.255.255.224"
         [26]="255.255.255.192"  [25]="255.255.255.128"  [24]="255.255.255.0"
@@ -42,13 +42,17 @@ cidr() {
         [2]="192.0.0.0"         [1]="128.0.0.0"         [0]="0.0.0.0"
     )
 
-    [[ -n "${cidr_dict["$input"]}" ]] && { printf "%s\n" "${cidr_dict["$input"]}"; return 0; }
-
-    for cidr in "${!cidr_dict[@]}"; do
-        [[ "${cidr_dict[$cidr]}" == "$input" ]] && { printf "/%s\n" "$cidr"; return 0; }
-    done
-
-    printf "Enter CIDR notation ('/24') or subnet mask ('255.255.255.0')\n" >&2; return 1
+    if [[ -z "$input" ]]; then
+        printf "Enter CIDR notation ('/24') or subnet mask ('255.255.255.0')\n" 1>&2; return 1
+    elif [[ -n "${cidrs["$input"]}" ]]; then
+        printf "%s\n" "${cidrs["$input"]}"; return 0
+    else
+        for cidr in "${!cidrs[@]}"; do
+            if [[ "${cidrs[$cidr]}" == "$input" ]]; then
+                printf "/%s\n" "$cidr"; return 0
+            fi
+        done
+    fi
 }
 
 clean_history() {
@@ -73,33 +77,18 @@ compress() {
     fi
 }
 
-connect() {
-    if [[ -z "$1" ]]; then
-        printf "connect: must provide hostname\n" >&2; return 1
-    else
-        local host="$1"
-        local files=("${HOME}/.bashrc" "${HOME}/.bash_profile" "${HOME}/.vimrc" "${HOME}/.local" "${HOME}/.vim")
-    fi
-
-    rsync -ac "${files[@]}" "${host}:${HOME}"
-
-    ssh -qto ConnectTimeout=5 "$host"
-}
-
 extract() {
     case "$1" in
-        *.tar.bz2) tar xjf "$1" ;;
-        *.tar.gz) tar xzf "$1" ;;
-        *.bz2) bunzip2 "$1" ;;
-        *.rar) rar x "$1" ;;
-        *.gz) gunzip "$1" ;;
-        *.tar) tar xf "$1" ;;
-        *.tbz2) tar xjf "$1" ;;
-        *.tgz) tar xzf "$1" ;;
-        *.zip) unzip "$1" ;;
-        *.Z) uncompress "$1" ;;
         *.7z) 7z x "$1" ;;
-        *) printf "%s cannot be extracted" "$1" >&2; return 1 ;;
+        *.bz2) bunzip2 "$1" ;;
+        *.gz) gunzip "$1" ;;
+        *.rar) rar x "$1" ;;
+        *.tar) tar xf "$1" ;;
+        *.tar.bz2|*.tbz2) tar xjf "$1" ;;
+        *.tar.gz|*.tgz) tar xzf "$1" ;;
+        *.Z) uncompress "$1" ;;
+        *.zip) unzip "$1" ;;
+        *) printf "%s cannot be extracted" "$1" 1>&2; return 1 ;;
     esac
 }
 
@@ -166,10 +155,6 @@ reset_unstage() {
 }
 
 thetime() {
-    local zulu central
-
-    zulu="$(date -u +"%a %b %-d, %Y - %R:%S")"
-    central="$(TZ="America/Chicago" date +"%a %b %-d, %Y - %R:%S")"
-
-    printf "CDT: %s\nUTC: %s\n" "$central" "$zulu"
+    date -u +"%Z: %a %b %-d, %Y - %R:%S"
+    TZ="America/Chicago" date +"%Z: %a %b %-d, %Y - %R:%S"
 }
