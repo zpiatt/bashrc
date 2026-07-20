@@ -92,6 +92,24 @@ extract() {
     esac
 }
 
+init_tmux() {
+    local init_script session
+
+    init_script="${HOME}/.tmux/tmux-init.sh"
+    session="homelab"
+
+    if [[ -f "$init_script" ]]; then
+        [[ -n "$tmux" || "$TERM_PROGRAM" == vscode ]] && return 0
+
+        if [[ "$(tmux ls)" =~ "$session" ]]; then
+            return 0
+        else
+            bash "$init_script" "$session"
+            tmux attach-session -t "${session}:1"
+        fi
+    fi
+}
+
 killbg() {
     local array confirm pid
 
