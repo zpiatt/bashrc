@@ -100,15 +100,11 @@ init_tmux() {
 
     if [[ -f "$init_script" ]]; then
         [[ -n "$tmux" || "$TERM_PROGRAM" == vscode ]] && return 0
-
-        if [[ "$(tmux ls)" =~ "$session" ]]; then
-            return 0
-        else
-            bash "$init_script" "$session"
-            tmux attach-session -t "${session}:1"
-        fi
+        [[ "$(tmux ls)" =~ "$session" ]] || bash "$init_script" "$session"
+        tmux attach-session -t "${session}:1"
     fi
 }
+
 
 killbg() {
     local array confirm pid
