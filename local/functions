@@ -78,15 +78,15 @@ compress() {
 }
 
 extract() {
-    case "$1" in
+    case "${1,,}" in
         *.7z) 7z x "$1" ;;
+        *.tar.bz2|*.tbz2) tar xjf "$1" ;;
+        *.tar.gz|*.tgz) tar xzf "$1" ;;
         *.bz2) bunzip2 "$1" ;;
         *.gz) gunzip "$1" ;;
         *.rar) rar x "$1" ;;
         *.tar) tar xf "$1" ;;
-        *.tar.bz2|*.tbz2) tar xjf "$1" ;;
-        *.tar.gz|*.tgz) tar xzf "$1" ;;
-        *.Z) uncompress "$1" ;;
+        *.z) uncompress "$1" ;;
         *.zip) unzip "$1" ;;
         *) printf "%s cannot be extracted" "$1" 1>&2; return 1 ;;
     esac
@@ -99,8 +99,8 @@ init_tmux() {
     session="homelab"
 
     if [[ -f "$init_script" ]]; then
-        [[ -n "$tmux" || "$TERM_PROGRAM" == vscode ]] && return 0
-        [[ "$(tmux ls)" =~ "$session" ]] || bash "$init_script" "$session"
+        [[ -n "$TMUX" || "$TERM_PROGRAM" == vscode ]] && return 0
+        [[ "$(tmux ls)" =~ $session ]] || bash "$init_script" "$session"
         tmux attach-session -t "${session}:1"
     fi
 }
@@ -109,13 +109,12 @@ init_tmux() {
 killbg() {
     local array confirm pid
 
-    while read -r line; do
-        if [[ "$line" =~ (Stopped|Running) ]]; then
-            read -ra fields <<< "$line"
-            if [[ "${fields[0]}" =~ ^[0-9]+$ ]]; then
-                array+=("${fields[0]}")
+    while read -ra line; do
+        if [[ "${line[*]}" =~ (Stopped|Running) ]]; then
+            if [[ "${line[0]}" =~ ^[0-9]+$ ]]; then
+                array+=("${line[0]}")
             else
-                array+=("${fields[1]}")
+                array+=("${line[1]}")
             fi
         fi
     done < <(jobs -l)
